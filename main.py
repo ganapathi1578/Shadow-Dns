@@ -85,12 +85,37 @@ def get_redirect_for(domain: str) -> Optional[str]:
     return row[0] if row else None
 
 def set_mapping(domain: str, redirect: Optional[str]) -> None:
+    """
+    Store mapping in SQLite. Ensure redirect is either None or a plain string
+    (convert pydantic AnyHttpUrl -> str when necessary) to avoid sqlite binding errors.
+    """
     d = normalize_domain(domain)
+
+    # Normalize redirect: ensure None or str
+    if redirect is None:
+        redirect_value = None
+    else:
+        # If it's a Pydantic AnyHttpUrl or other non-str, cast to str safely
+        try:
+            redirect_value = str(redirect)
+            # normalize empty/"None" strings to None
+            if redirect_value.lower() in ("none", ""):
+                redirect_value = None
+        except Exception:
+            # fallback to None if anything weird
+            redirect_value = None
+
     con = get_conn()
     cur = con.cursor()
-    cur.execute("INSERT INTO mappings(domain, redirect) VALUES(?, ?) ON CONFLICT(domain) DO UPDATE SET redirect=excluded.redirect", (d, redirect))
+    # Use parameterized query with values that are only str or None
+    cur.execute(
+        "INSERT INTO mappings(domain, redirect) VALUES(?, ?) "
+        "ON CONFLICT(domain) DO UPDATE SET redirect=excluded.redirect",
+        (d, redirect_value)
+    )
     con.commit()
     con.close()
+
 
 def remove_mapping(domain: str) -> bool:
     d = normalize_domain(domain)
