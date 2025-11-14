@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: shadow-dns-backend
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "./start.sh"
+    envVars:
+      - key: API_KEY
+        value: supersecretkey123
+      - key: DB_PATH
+        value: /data/mappings.db
+      - key: ALLOW_ORIGINS
+        value: "*"
